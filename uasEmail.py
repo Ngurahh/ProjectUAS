@@ -44,7 +44,7 @@ def main():
     if choice == '1':
         sendEmail()
     elif choice == '2':
-        read_email()
+        readEmail()
     elif choice == '3':
         print("Terima kasih telah menggunakan program ini. Sampai jumpa!")
         exit()
