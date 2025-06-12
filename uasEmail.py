@@ -1,7 +1,5 @@
 import smtplib
 import imaplib
-import email
-import os
 
 def sendEmail():
     print("Kirim Email")
