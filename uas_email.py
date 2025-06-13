@@ -35,17 +35,17 @@ Selamat Datang di Program Email!
             if not validasiEmail(email_address):
                 print("Alamat email tidak valid. Silakan coba lagi.")
                 continue
-            email_password = getpass("Masukkan sandi email Anda: ")
-            if not email_password:
+            app_password = getpass("Masukkan sandi email Anda (gunakan app password): ")
+            if not app_password:
                 print("Sandi tidak boleh kosong. Silakan coba lagi.")
                 continue
             try:
                 print("Mencoba masuk ke akun email...")
                 server_smtp = smtplib.SMTP(smtp_server, smtp_port)
                 server_smtp.starttls()
-                server_smtp.login(email_address, email_password)
+                server_smtp.login(email_address, app_password)
                 server_imap = imaplib.IMAP4_SSL(imap_server, imap_port)
-                server_imap.login(email_address, email_password)
+                server_imap.login(email_address, app_password)
                 print("Berhasil masuk ke akun email.")
                 menu(email_address, server_smtp, server_imap)
                 break
