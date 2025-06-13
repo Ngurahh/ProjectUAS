@@ -187,7 +187,6 @@ def recvEmail(server_imap, email_ids):
     Kotak Masuk ({len(email_ids)} Email)
 ================================''')
 
-        # Mengambil 10 email terbaru (dibalik agar terbaru di atas)
         email_ids = email_ids[-10:][::-1]
         emails = []
 
@@ -217,13 +216,18 @@ def recvEmail(server_imap, email_ids):
         while True:
         # Menampilkan daftar email
             print("Daftar Email:")
+            print("------------------------------------------------")
             for i, email_item in enumerate(emails, 1):
-                print(f"{i}. Dari: {email_item['from']} | Subjek: {email_item['subject']} | Tanggal: {email_item['date']}")
+                # print(f"{i}. Dari: {email_item['from']} | Subjek: {email_item['subject']} | Tanggal: {email_item['date']}")
+                print(f'''{i}. Dari: {email_item['from']}
+   Subjek: {email_item['subject']}
+   Tanggal: {email_item['date']}''')
+                print("------------------------------------------------")
             try:
                 # Pilih email untuk dibaca
                 read_email_option = int(input("Masukkan id email untuk melihat isi (0 untuk kembali): ").strip())
                 if read_email_option == 0:
-                    continue
+                    return
                 elif 0 > read_email_option > len(emails):
                     print("Pilihan tidak valid. Silakan coba lagi.")
                     continue
