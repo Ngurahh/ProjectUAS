@@ -1,6 +1,6 @@
 import smtplib
 import imaplib
-import email  # TAMBAHAN: Import yang hilang
+import email  
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
