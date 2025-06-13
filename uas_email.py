@@ -20,16 +20,12 @@ def validasiEmail(email_address):
     return bool(re.match(pattern, email_address))
 
 # Fungsi Autentikasi
-
+# Fungsi ini menangani proses autentikasi pengguna yang ingin mengakses program email
 def auth():
-    """ Fungsi ini menangani proses masuk ke akun email pengguna"""
-    print('''================================
-Selamat Datang di Program Email!
-================================
-Direkomendaikan gunakan App Password dari akun Gmail Anda
-================================''')
     while True:
         print('''================================
+Selamat Datang di Program Email!
+================================
 1. Masuk
 2. Keluar
 --------------------------------''')
@@ -67,13 +63,19 @@ Direkomendaikan gunakan App Password dari akun Gmail Anda
 
 # Fungsi Menu Utama
 def menu(email_address, server_smtp, server_imap):
+    server_imap.select("inbox")
+    status, messages = server_imap.search(None, 'ALL')
+    if status != 'OK':
+        print("Gagal memuat kotak masuk. Silakan coba lagi.")
+        return
+    email_ids = messages[0].split()
     """ Fungsi ini menampilkan menu utama setelah pengguna berhasil masuk ke akun email mereka"""
     while True:
-        print('''================================
+        print(f'''================================
               Menu
 ================================
 1. Kirim Email
-2. Kotak Masuk
+2. Kotak Masuk ({len(email_ids)} Email)
 3. Keluar Akun
 --------------------------------''')
         menu_option = input("Pilihan anda (1/2/3): ")
