@@ -173,7 +173,7 @@ def sendEmail(email_address, server_smtp):
             return
 
 # Fungsi Menerima Email
-def recvEmail(server_imap):
+def recvEmail(server_imap, email_ids):
     try:
         server_imap.select("inbox")
         _, message_numbers = server_imap.search(None, "ALL")
@@ -184,7 +184,7 @@ def recvEmail(server_imap):
             return
 
         print(f'''================================
-      Kotak Masuk ({len(email_ids)} Email)
+    Kotak Masuk ({len(email_ids)} Email)
 ================================''')
 
         # Mengambil 10 email terbaru (dibalik agar terbaru di atas)
@@ -214,18 +214,20 @@ def recvEmail(server_imap):
             print("Tidak ada email yang dapat ditampilkan.")
             return
 
-        # Menampilkan daftar email
-        print("Daftar Email:")
-        for i, email_item in enumerate(emails, 1):
-            print(f"{i}. Dari: {email_item['from']} | Subjek: {email_item['subject']} | Tanggal: {email_item['date']}")
-
-        # Pilih email untuk dibaca
         while True:
+        # Menampilkan daftar email
+            print("Daftar Email:")
+            for i, email_item in enumerate(emails, 1):
+                print(f"{i}. Dari: {email_item['from']} | Subjek: {email_item['subject']} | Tanggal: {email_item['date']}")
             try:
-                read_email_option = int(input("Masukkan nomor email untuk melihat isi (0 untuk kembali): ").strip())
+                # Pilih email untuk dibaca
+                read_email_option = int(input("Masukkan id email untuk melihat isi (0 untuk kembali): ").strip())
                 if read_email_option == 0:
-                    break
-                if 1 <= read_email_option <= len(emails):
+                    continue
+                elif 0 > read_email_option > len(emails):
+                    print("Pilihan tidak valid. Silakan coba lagi.")
+                    continue
+                elif 1 <= read_email_option <= len(emails):
                     selected_email = emails[read_email_option - 1]
                     status, message_data = server_imap.fetch(selected_email["id"], '(RFC822)')
                     if status != 'OK':
@@ -267,7 +269,7 @@ def recvEmail(server_imap):
                                                 decoded_filename, encoding = decode_header(filename)[0]
                                                 if isinstance(decoded_filename, bytes):
                                                     decoded_filename = decoded_filename.decode(encoding if encoding else 'utf-8', errors='ignore')
-                                                # os.makedirs("unduhan", exist_ok=True)
+                                                os.makedirs("unduhan", exist_ok=True)
                                                 filepath = os.path.join("unduhan", f"{round(time.time())}_{decoded_filename}")
                                                 with open(filepath, "wb") as f:
                                                     f.write(part.get_payload(decode=True))
@@ -280,8 +282,9 @@ def recvEmail(server_imap):
                                     print(f"Isi Email:\n{body.decode('utf-8', errors='ignore')}")
                                 except Exception as e:
                                     print(f"Error membaca isi email: {e}")
+                            input("Tekan Enter untuk kembali ke daftar email")
                 else:
-                    print("Pilihan tidak valid.")
+                    print("Pilihan tidak valid. Silahkan coba lagi.")
             except ValueError:
                 print("Masukkan angka yang valid.")
     except imaplib.IMAP4.error as e:
