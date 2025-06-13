@@ -173,30 +173,38 @@ def sendEmail(email_address, server_smtp):
             return
 
 # Fungsi Menerima Email
-def recvEmail(server_imap, email_ids):
-    print(f'''================================
-      Kotak Masuk ({len(email_ids)} Email)
-================================''')
+def recvEmail(server_imap):
     try:
         server_imap.select("inbox")
         _, message_numbers = server_imap.search(None, "ALL")
         email_ids = message_numbers[0].split()
+
         if not email_ids:
             print("Tidak ada email di kotak masuk.")
             return
 
-        # Mengambil 10 email terbaru
+        print(f'''================================
+      Kotak Masuk ({len(email_ids)} Email)
+================================''')
+
+        # Mengambil 10 email terbaru (dibalik agar terbaru di atas)
         email_ids = email_ids[-10:][::-1]
         emails = []
+
         for num in email_ids:
             try:
                 _, email_data = server_imap.fetch(num, '(RFC822)')
                 email_info = email.message_from_bytes(email_data[0][1])
+                subject_raw = email_info.get('Subject', "(Tanpa Subjek)")
+                decoded_subject, encoding = decode_header(subject_raw)[0]
+                if isinstance(decoded_subject, bytes):
+                    decoded_subject = decoded_subject.decode(encoding if encoding else 'utf-8', errors='ignore')
+
                 emails.append({
-                    'id': num,
-                    'from': email_info.get('From', "(Tanpa Pengirim)"),
-                    'subject': email_info.get('Subject', "(Tanpa Subjek)"),
-                    'date': email_info.get('Date', "(Tanpa Tanggal)")
+                    "id": num,
+                    "from": email_info.get('From', "(Tanpa Pengirim)"),
+                    "subject": decoded_subject,
+                    "date": email_info.get('Date', "(Tanpa Tanggal)")
                 })
             except Exception as e:
                 print(f"Error membaca email {num}: {e}")
@@ -206,71 +214,76 @@ def recvEmail(server_imap, email_ids):
             print("Tidak ada email yang dapat ditampilkan.")
             return
 
-        # Menampilkan Daftar Email
+        # Menampilkan daftar email
         print("Daftar Email:")
         for i, email_item in enumerate(emails, 1):
-            print(f"{i}. Dari: {email_item['From']} | Subjek: {email_item['Subject']} | Tanggal: {email_item['Date']}")
+            print(f"{i}. Dari: {email_item['from']} | Subjek: {email_item['subject']} | Tanggal: {email_item['date']}")
 
         # Pilih email untuk dibaca
         while True:
-            read_email_option = input("Masukkan nomor email untuk melihat isi (0 untuk kembali): ").strip()
-            read_email_option = int(read_email_option)
-            if 1 <= read_email_option <= len(emails):
-                selected_email = emails[read_email_option - 1]
-                status, message_data = server_imap.fetch(selected_email, '(RFC822)')
-                if status != 'OK':
-                    print("Gagal mengambil email.")
-                    continue
+            try:
+                read_email_option = int(input("Masukkan nomor email untuk melihat isi (0 untuk kembali): ").strip())
+                if read_email_option == 0:
+                    break
+                if 1 <= read_email_option <= len(emails):
+                    selected_email = emails[read_email_option - 1]
+                    status, message_data = server_imap.fetch(selected_email["id"], '(RFC822)')
+                    if status != 'OK':
+                        print("Gagal mengambil email.")
+                        continue
 
-                # Mengambil isi email
-                for response_part in message_data:
-                    if isinstance(response_part, tuple):
-                        email_message = email.message_from_bytes(response_part[1])
-                        subject, encoding = decode_header(email_message['Subject'])[0]
-                        if isinstance(subject, bytes):
-                            subject = subject.decode(encoding if encoding else 'utf-8')
+                    for response_part in message_data:
+                        if isinstance(response_part, tuple):
+                            email_message = email.message_from_bytes(response_part[1])
+                            subject_raw = email_message.get("Subject", "(Tanpa Subjek)")
+                            decoded_subject, encoding = decode_header(subject_raw)[0]
+                            if isinstance(decoded_subject, bytes):
+                                decoded_subject = decoded_subject.decode(encoding if encoding else 'utf-8', errors='ignore')
 
-                        # Menampilkan isi email
-                        print("================================")
-                        print("           Isi Email")
-                        print("================================")
-                        print(f"Dari: {email_message.get('From', '(Tanpa Pengirim)')}")
-                        print(f"Subjek: {subject, '(Tanpa Subjek)'}")
-                        print(f"Tanggal: {email_message.get('Date', '(Tanpa Tanggal)')}")
-                        print("--------------------------------")
+                            print("================================")
+                            print("           Isi Email")
+                            print("================================")
+                            print(f"Dari   : {email_message.get('From', '(Tanpa Pengirim)')}")
+                            print(f"Subjek : {decoded_subject}")
+                            print(f"Tanggal: {email_message.get('Date', '(Tanpa Tanggal)')}")
+                            print("--------------------------------")
 
-                        if email_message.is_mulitpart():
-                            for part in email_message.walk():
-                                if part.get_content_type() == "text/plain" or part.get_content_type() == "text/html":
-                                    try:
-                                        body = part.get_payload(decode=True)
-                                        print(f"Isi Email:\n {body}")
-                                    except Exception as e:
-                                        print(f"Error membaca isi email: {e}")
+                            if email_message.is_multipart():
+                                for part in email_message.walk():
+                                    content_type = part.get_content_type()
+                                    content_disposition = str(part.get("Content-Disposition", ""))
 
-                                # Bagian ini menampilkan lampiran lalu menyimpannya
-                                elif part.get_content_type() == "attachment": 
-                                    filename = part.get_filename()
-                                    try:
-                                        filename, encoding = decode_header(filename)[0]
-                                        if isinstance(filename, bytes):
-                                            filename = filename.decode(encoding if encoding else 'utf-8')
-                                        print(f"Lampiran: {filename}")
-                                        timestamp = round(time.time())
-                                        filepath = os.path.join("unduhan", f"{timestamp}_{filename}")
-                                        with open(filepath, "wb") as f:
-                                            f.write(part.get_payload(decode=True))
-                                        print(f"Lampiran disimpan di: {filepath}")
-                                    except Exception as e:
-                                        print(f"Error menyimpan lampiran: {e}")
-                        else:
-                            try:
-                                body = email_message.get_payload(decode=True)
-                                print(f"Isi Email:\n {body.decode('utf-8')}")
-                            except Exception as e:
-                                print(f"Error membaca isi email: {e}") 
-            else:
-                print("Pilihan tidak valid.")
+                                    if content_type in ["text/plain", "text/html"]:
+                                        try:
+                                            body = part.get_payload(decode=True)
+                                            print(f"Isi Email:\n{body.decode('utf-8', errors='ignore')}")
+                                        except Exception as e:
+                                            print(f"Error membaca isi email: {e}")
+
+                                    elif "attachment" in content_disposition:
+                                        filename = part.get_filename()
+                                        if filename:
+                                            try:
+                                                decoded_filename, encoding = decode_header(filename)[0]
+                                                if isinstance(decoded_filename, bytes):
+                                                    decoded_filename = decoded_filename.decode(encoding if encoding else 'utf-8', errors='ignore')
+                                                # os.makedirs("unduhan", exist_ok=True)
+                                                filepath = os.path.join("unduhan", f"{round(time.time())}_{decoded_filename}")
+                                                with open(filepath, "wb") as f:
+                                                    f.write(part.get_payload(decode=True))
+                                                print(f"Lampiran disimpan di: {filepath}")
+                                            except Exception as e:
+                                                print(f"Error menyimpan lampiran: {e}")
+                            else:
+                                try:
+                                    body = email_message.get_payload(decode=True)
+                                    print(f"Isi Email:\n{body.decode('utf-8', errors='ignore')}")
+                                except Exception as e:
+                                    print(f"Error membaca isi email: {e}")
+                else:
+                    print("Pilihan tidak valid.")
+            except ValueError:
+                print("Masukkan angka yang valid.")
     except imaplib.IMAP4.error as e:
         print(f"Gagal membaca email: {e}")
     except Exception as e:
