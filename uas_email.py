@@ -159,7 +159,6 @@ def sendEmail(email_address, server_smtp):
                 more = input("Apakah Anda ingin menambahkan lampiran lain? (y/n): ").strip().lower()
                 if more != 'y':
                     break
-
         try:
             print("Mengirimkan email...")
             server_smtp.sendmail(email_address, recipient, message.as_string())
