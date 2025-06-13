@@ -62,7 +62,6 @@ Selamat Datang di Program Email!
             except Exception as e:
                 print(f"Gagal terhubung ke server: {e}")
             finally:
-                # PERBAIKAN: Pastikan koneksi ditutup jika terjadi error
                 if server_smtp:
                     try:
                         server_smtp.quit()
@@ -112,7 +111,6 @@ def menu(email_address, server_smtp, server_imap):
     except Exception as e:
         print(f"Error dalam menu: {e}")
     finally:
-        # PERBAIKAN: Pastikan koneksi ditutup
         try:
             if server_smtp:
                 server_smtp.quit()
