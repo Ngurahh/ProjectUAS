@@ -1,30 +1,11 @@
-import os
-import re
-import time
-import email 
-import smtplib
-import imaplib
-from email import encoders
-from getpass import getpass
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email.header import decode_header
-from email.utils import parsedate_to_datetime
-from email.mime.multipart import MIMEMultipart
+from email_needs import *
 
-# Konfigurasi
-smtp_server = "smtp.gmail.com"
-smtp_port = 587
-imap_server = "imap.gmail.com"
-imap_port = 993
 
-# Fungsi Validasi Email
 def validasiEmail(email_address):
-    """ Fungsi ini memvalidasi format alamat email menggunakan regex"""
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email_address))
 
-# Fungsi Autentikasi
+
 def auth():
     while True:
         print('''================================
@@ -45,15 +26,11 @@ Selamat Datang di Program Email!
                 continue
             try:
                 print("Mencoba masuk ke akun email...")
-                # Membuat koneksi ke server SMTP
                 server_smtp = smtplib.SMTP(smtp_server, smtp_port)
                 server_smtp.starttls()
                 server_smtp.login(email_address, app_password)
-                
-                # Membuat koneksi ke server IMAP
                 server_imap = imaplib.IMAP4_SSL(imap_server, imap_port)
                 server_imap.login(email_address, app_password)
-                
                 print("Berhasil masuk ke akun email.")
                 menu(email_address, server_smtp, server_imap)
             except smtplib.SMTPAuthenticationError:
@@ -71,7 +48,7 @@ Selamat Datang di Program Email!
         else:
             print("Pilihan tidak valid. Silakan coba lagi.")
 
-# Fungsi Menu Utama
+
 def menu(email_address, server_smtp, server_imap):    
     while True:
         print(f'''================================
@@ -85,7 +62,7 @@ def menu(email_address, server_smtp, server_imap):
         if menu_option == "1":
             sendEmail(email_address, server_smtp)
         elif menu_option == "2":
-            recvEmail(server_imap)
+            recvEmail(email_address, server_smtp, server_imap)
         elif menu_option == "3":
             print(f"Anda telah keluar dari akun {email_address}")
             server_smtp.quit()
@@ -95,33 +72,57 @@ def menu(email_address, server_smtp, server_imap):
         else:
             print("Pilihan tidak valid. Silakan coba lagi.")
 
-# Fungsi Kirim Email
-def sendEmail(email_address, server_smtp):
+
+def sendEmail(email_address, 
+              server_smtp, 
+              recipient_address="", 
+              original_subject=None, 
+              original_message_id=None, 
+              previous_body=None, 
+              previous_filenames=None):
     while True:
-        print('''================================
-         Kirim Email
-================================''')
-        
-        recipient = input("Masukkan alamat email penerima: ")
-        if not validasiEmail(recipient):
+        print("================================")
+        print("          Kirim Email")
+        print("================================")
+        if not recipient_address:   
+            recipient_address = input("Masukkan alamat email penerima: ")
+        if not validasiEmail(recipient_address):
             print("Alamat email penerima tidak valid. Silakan coba lagi.")
             continue
-        subject = input("Masukkan subjek email: ")
-        if not subject.strip():
-            print("Subjek tidak boleh kosong. Silakan coba lagi.")
-            continue
-        body = input("Masukkan isi email: ")
-        if not body.strip():
-            print("Isi email tidak boleh kosong. Silakan coba lagi.")
-            continue
+
+        if original_subject:
+            subject = f"(Balasan) {original_subject}"
+            print(f"Subjek email: {original_subject}")
+        else:
+            while True:
+                subject = input("Masukkan subjek email: ")
+                if subject.strip():
+                    break
+                else:
+                    print("Subjek tidak boleh kosong. Silakan coba lagi.")
+                    continue
+
+        print("Masukkan isi email:")
+        body = input("> ")
+
+        if previous_body:
+            previous_filenames_str = ""
+            body += "\n\n------ Email sebelumnya ------\n" + previous_body
+            for previous_filename in previous_filenames:
+                previous_filenames_str += f"{previous_filename}\n"
+            body += "\n\nLampiran sebelumnya:\n" + previous_filenames_str
 
         message = MIMEMultipart()
         message["From"] = email_address
-        message["To"] = recipient
+        message["To"] = recipient_address
         message["Subject"] = subject
+
+        if original_message_id:
+            message["In-Reply-To"] = original_message_id
+            message["References"] = original_message_id
+
         message.attach(MIMEText(body, 'plain'))
 
-        # Tambah Lampiran
         add_attachment = input("Apakah Anda ingin menambahkan lampiran? (y/n): ").strip().lower()
         if add_attachment == 'y':
             while True:
@@ -141,31 +142,26 @@ def sendEmail(email_address, server_smtp):
                         part.add_header("Content-Disposition", f"attachment; filename={os.path.basename(filename)}")
                         message.attach(part)
                     print(f"Lampiran {filename} berhasil ditambahkan.")
-                except PermissionError:
-                    print(f"Tidak memiliki izin untuk membaca file {filename}.")
-                    continue
                 except Exception as e:
                     print(f"Gagal menambahkan lampiran: {e}")
                     continue
                     
                 more = input("Apakah Anda ingin menambahkan lampiran lain? (y/n): ").strip().lower()
-                if more != 'y':
+                if more != "y":
                     break
         try:
             print("Mengirimkan email...")
-            server_smtp.sendmail(email_address, recipient, message.as_string())
+            server_smtp.sendmail(email_address, recipient_address, message.as_string())
             print("Email berhasil dikirim!")
-        except smtplib.SMTPException as e:
-            print(f"Gagal mengirim email: {e}")
         except Exception as e:
             print(f"Gagal mengirim email: {e}")
 
         more = input("Ingin mengirim email kembali? (y/n): ").strip().lower()
-        if more != 'y':
-            return
+        if more != "y":
+            return        
 
-# Fungsi Menerima Email
-def recvEmail(server_imap):
+
+def recvEmail(email_address, server_smtp, server_imap):
     try:
         server_imap.select("inbox")
         _, email_ids_raw = server_imap.search(None, "ALL")
@@ -175,11 +171,8 @@ def recvEmail(server_imap):
             print("Tidak ada email di kotak masuk.")
             return
 
-        # Ambil 20 ID terakhir dulu, karena tidak semua bisa diambil
         email_ids = email_ids[-20:][::-1]
-
         emails = []
-        errors = []
 
         for num in email_ids:
             try:
@@ -192,53 +185,40 @@ def recvEmail(server_imap):
                 if isinstance(decoded_subject, bytes):
                     decoded_subject = decoded_subject.decode(encoding if encoding else 'utf-8', errors='ignore')
 
+                # Hilangkan (Balasan) jika ada
+                decoded_subject = decoded_subject.replace("(Balasan) ", "")
+
                 date_raw = email_info.get('Date', "(Tanpa Tanggal)")
                 try:
-                    parsed_date = parsedate_to_datetime(date_raw)
+                    parsed_date = parsedate_to_datetime(date_raw).astimezone(ZoneInfo("Asia/Makassar"))
                 except:
-                    parsed_date = datetime.min
+                    parsed_date = datetime.min.replace(tzinfo=ZoneInfo("Asia/Makassar"))
 
                 emails.append({
                     "id": num,
                     "from": email_info.get('From', "(Tanpa Pengirim)"),
                     "subject": decoded_subject,
-                    "date": date_raw,
-                    "parsed_date": parsed_date
+                    "date": parsed_date.strftime('%Y-%m-%d %H:%M:%S'),
+                    "parsed_date": parsed_date,
                 })
-
-            except Exception as e:
-                errors.append(f"Error membaca email {num}: {e}")
+            except:
                 continue
 
-        # Urutkan berdasarkan tanggal terbaru
         emails.sort(key=lambda x: x["parsed_date"], reverse=True)
         emails = emails[:20]
 
-        print(f'''================================
-    Kotak Masuk ({len(emails)} Email Terbaru)
-================================''')
-        print("Daftar email:")
-
-        # Tampilkan error (jika ada)
-        if errors:
-            for err in errors:
-                print(f" {err}")
-            print("------------------------------------------------")
-
-        if not emails:
-            print("Tidak ada email yang dapat ditampilkan.")
-            return
-
-        for i, email_item in enumerate(emails, 1):
-            print(f'''{i}. Dari: {email_item['from']}
-   Subjek: {email_item['subject']}
-   Tanggal: {email_item['date']}''')
-            print("------------------------------------------------")
-
-        # Loop untuk membaca isi email
         while True:
+            print("================================")
+            print("          Kotak Masuk ")
+            print("================================")
+            for i, email_item in enumerate(emails, 1):
+                print(f"{i}. Dari   : {email_item['from']}")
+                print(f"   Subjek : {email_item['subject']}")
+                print(f"   Tanggal: {email_item['date']}")
+                print("--------------------------------")
+
             try:
-                read_email_option = int(input("Masukkan id email untuk melihat isi (1/2/3/...) (0 untuk kembali): ").strip())
+                read_email_option = int(input("Masukkan id email untuk melihat isi (0 untuk kembali): ").strip())
                 if read_email_option == 0:
                     return
                 elif 1 <= read_email_option <= len(emails):
@@ -255,14 +235,26 @@ def recvEmail(server_imap):
                             decoded_subject, encoding = decode_header(subject_raw)[0]
                             if isinstance(decoded_subject, bytes):
                                 decoded_subject = decoded_subject.decode(encoding if encoding else 'utf-8', errors='ignore')
+                            decoded_subject = decoded_subject.replace("(Balasan) ", "")
+
+                            # Tanggal isi email
+                            date_raw = email_message.get("Date", "(Tanpa Tanggal)")
+                            try:
+                                parsed_date = parsedate_to_datetime(date_raw).astimezone(ZoneInfo("Asia/Makassar"))
+                                formatted_date = parsed_date.strftime('%Y-%m-%d %H:%M:%S')
+                            except:
+                                formatted_date = "(Tanggal tidak valid)"
 
                             print("================================")
                             print("           Isi Email")
                             print("================================")
                             print(f"Dari   : {email_message.get('From', '(Tanpa Pengirim)')}")
                             print(f"Subjek : {decoded_subject}")
-                            print(f"Tanggal: {email_message.get('Date', '(Tanpa Tanggal)')}")
+                            print(f"Tanggal: {formatted_date}")
                             print("--------------------------------")
+
+                            previous_body = ""
+                            previous_filenames = []
 
                             if email_message.is_multipart():
                                 for part in email_message.walk():
@@ -272,7 +264,9 @@ def recvEmail(server_imap):
                                     if content_type in ["text/plain", "text/html"]:
                                         try:
                                             body = part.get_payload(decode=True)
-                                            print(f"Isi Email:\n{body.decode('utf-8', errors='ignore')}")
+                                            decoded_body = body.decode('utf-8', errors='ignore')
+                                            previous_body = decoded_body
+                                            print(f"Isi Email:\n{decoded_body}")
                                         except Exception as e:
                                             print(f"Error membaca isi email: {e}")
                                     elif "attachment" in content_disposition:
@@ -286,25 +280,40 @@ def recvEmail(server_imap):
                                                 filepath = os.path.join("unduhan", f"{round(time.time())}_{decoded_filename}")
                                                 with open(filepath, "wb") as f:
                                                     f.write(part.get_payload(decode=True))
+                                                previous_filenames.append(decoded_filename)
                                                 print(f"Lampiran disimpan di: {filepath}")
                                             except Exception as e:
                                                 print(f"Error menyimpan lampiran: {e}")
                             else:
                                 try:
                                     body = email_message.get_payload(decode=True)
-                                    print(f"Isi Email:\n{body.decode('utf-8', errors='ignore')}")
+                                    decoded_body = body.decode('utf-8', errors='ignore')
+                                    previous_body = decoded_body
+                                    print(f"Isi Email:\n{decoded_body}")
                                 except Exception as e:
                                     print(f"Error membaca isi email: {e}")
-                            input("Tekan Enter untuk kembali ke daftar email")
+
+                            reply = input("Apakah anda ingin membalas email ini? (y/n): ").strip().lower()
+                            if reply == "y":
+                                sendEmail(
+                                    email_address,
+                                    server_smtp,
+                                    recipient_address=email_message.get("From", ""),
+                                    original_subject=decoded_subject,
+                                    original_message_id=email_message.get("Message-ID"),
+                                    previous_body=previous_body,
+                                    previous_filenames=previous_filenames
+                                )
+                            return
                 else:
                     print("Pilihan tidak valid. Silakan coba lagi.")
             except ValueError:
                 print("Masukkan angka yang valid.")
-    except imaplib.IMAP4.error as e:
-        print(f"Gagal membaca email: {e}")
     except Exception as e:
         print(f"Gagal membaca email: {e}")
 
-# Bagian utama untuk menjalankan program
+
 if __name__ == "__main__":
     auth()
+
+# email_password = 'ulbh lgzz fkfp zvtp'
