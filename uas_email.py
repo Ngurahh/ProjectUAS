@@ -105,13 +105,17 @@ def sendEmail(email_address,
         print("Masukkan isi email:")
         body = input("> ")
 
+        # Tambahkan isi email sebelumnya jika ada
         if previous_body:
-            previous_filenames_str = ""
-            body += "\n\n------ Email sebelumnya ------\n" + previous_body
-            for previous_filename in previous_filenames:
-                previous_filenames_str += f"{previous_filename}\n"
-            body += "\n\nLampiran sebelumnya:\n" + previous_filenames_str
+            if "------ Email sebelumnya ------" in previous_body:
+                clean_body = previous_body.replace("------ Email sebelumnya ------", "").strip()
+            else:
+                clean_body = previous_body.strip()
+            body += "\n\n------ Email sebelumnya ------\n\n" + clean_body
+            if previous_filenames:
+                body += "\n\nLampiran sebelumnya:\n" + "\n".join(previous_filenames)
 
+        # Siapkan pesan email
         message = MIMEMultipart()
         message["From"] = email_address
         message["To"] = recipient_address
@@ -123,6 +127,7 @@ def sendEmail(email_address,
 
         message.attach(MIMEText(body, 'plain'))
 
+        # Tambahkan lampiran baru jika ada
         add_attachment = input("Apakah Anda ingin menambahkan lampiran? (y/n): ").strip().lower()
         if add_attachment == 'y':
             while True:
@@ -149,6 +154,8 @@ def sendEmail(email_address,
                 more = input("Apakah Anda ingin menambahkan lampiran lain? (y/n): ").strip().lower()
                 if more != "y":
                     break
+
+        # Kirim email
         try:
             print("Mengirimkan email...")
             server_smtp.sendmail(email_address, recipient_address, message.as_string())
@@ -156,9 +163,11 @@ def sendEmail(email_address,
         except Exception as e:
             print(f"Gagal mengirim email: {e}")
 
-        more = input("Ingin mengirim email kembali? (y/n): ").strip().lower()
-        if more != "y":
-            return        
+        if not original_message_id:
+            more = input("Ingin mengirim email kembali? (y/n): ").strip().lower()
+            if more != "y":
+                return      
+        return
 
 
 def recvEmail(email_address, server_smtp, server_imap):
@@ -186,7 +195,8 @@ def recvEmail(email_address, server_smtp, server_imap):
                     decoded_subject = decoded_subject.decode(encoding if encoding else 'utf-8', errors='ignore')
 
                 # Hilangkan (Balasan) jika ada
-                decoded_subject = decoded_subject.replace("(Balasan) ", "")
+                if decoded_subject.startswith("(Balasan) "):
+                    decoded_subject = "(Balasan) " + decoded_subject.replace("(Balasan) ", "")
 
                 date_raw = email_info.get('Date', "(Tanpa Tanggal)")
                 try:
@@ -266,7 +276,7 @@ def recvEmail(email_address, server_smtp, server_imap):
                                             body = part.get_payload(decode=True)
                                             decoded_body = body.decode('utf-8', errors='ignore')
                                             previous_body = decoded_body
-                                            print(f"Isi Email:\n{decoded_body}")
+                                            print(f"Isi Email:\n\n{decoded_body}")
                                         except Exception as e:
                                             print(f"Error membaca isi email: {e}")
                                     elif "attachment" in content_disposition:
@@ -304,7 +314,6 @@ def recvEmail(email_address, server_smtp, server_imap):
                                     previous_body=previous_body,
                                     previous_filenames=previous_filenames
                                 )
-                            return
                 else:
                     print("Pilihan tidak valid. Silakan coba lagi.")
             except ValueError:
