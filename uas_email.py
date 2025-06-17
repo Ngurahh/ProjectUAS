@@ -1,11 +1,11 @@
 from email_needs import *
 
-
+# validasi email menggunakan regex
 def validasiEmail(email_address):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email_address))
 
-
+# fungsi untuk autentikasi dimana user memasukkan alamat email dan sandi
 def auth():
     while True:
         print('''================================
@@ -48,10 +48,10 @@ Selamat Datang di Program Email!
         else:
             print("Pilihan tidak valid. Silakan coba lagi.")
 
-
+# fungsi menu yang menampilkan opsi yang dapat dilakukan oleh user ketika sudah berhasil masuk
 def menu(email_address, server_smtp, server_imap):    
     while True:
-        print(f'''================================
+        print('''================================
               Menu
 ================================
 1. Kirim Email
@@ -72,7 +72,7 @@ def menu(email_address, server_smtp, server_imap):
         else:
             print("Pilihan tidak valid. Silakan coba lagi.")
 
-
+# fungsi untuk mengirim email
 def sendEmail(email_address, 
               server_smtp, 
               recipient_address="", 
@@ -169,7 +169,7 @@ def sendEmail(email_address,
                 return      
         return
 
-
+# fungsi untuk menerima email
 def recvEmail(email_address, server_smtp, server_imap):
     try:
         server_imap.select("inbox")
