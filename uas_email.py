@@ -76,15 +76,8 @@ def menu(email_address, server_smtp, server_imap):
             recvEmail(email_address, server_smtp, server_imap, False)
         elif menu_option == "4":
             print(f"Anda telah keluar dari akun {email_address}")
-            try:
-                server_smtp.quit()
-            except Exception:
-                pass
-            try:
-                server_imap.close()
-                server_imap.logout()
-            except Exception:
-                pass
+            server_smtp.quit()
+            server_imap.logout()
             return
         else:
             print("Pilihan tidak valid. Silakan coba lagi.")
@@ -208,7 +201,10 @@ def recvEmail(email_address, server_smtp, server_imap, email_sent=False):
         email_ids = email_ids_raw[0].split()
 
         if not email_ids:
-            print("Tidak ada email di kotak masuk.")
+            if not email_sent:
+                print("Tidak ada email di kotak masuk.")
+            else:
+                print("Tidak ada email terkirim.")
             return
 
         email_ids = email_ids[-20:][::-1]
@@ -259,8 +255,11 @@ def recvEmail(email_address, server_smtp, server_imap, email_sent=False):
                 print("--------------------------------")
 
             try:
-                read_email_option = int(input("Masukkan id email untuk melihat isi (0 untuk kembali): ").strip())
+                read_email_option = int(input("Masukkan id email untuk melihat isi (0 untuk kembali, -1 untuk menghapus email): ").strip())
                 if read_email_option == 0:
+                    
+                    #KALO ADA ERROR BERARTI PINDAH KONEKSI NI KE BAWAH KONEKSI smtp_server.quit() di menu
+                    server_imap.close()
                     return
                 elif 1 <= read_email_option <= len(emails):
                     selected_email = emails[read_email_option - 1]
@@ -351,6 +350,30 @@ def recvEmail(email_address, server_smtp, server_imap, email_sent=False):
                                     )
                             else:
                                 input("\nTekan enter untuk kembali")
+
+                # Opsi hapus email
+                elif read_email_option == -1:
+                    delete_email_option = int(input("Masukkan id email yang ingin dihapus: "))
+                    if 1 <= delete_email_option <= len(emails):
+                        try:
+                            server_imap.store(emails[delete_email_option - 1]["id"], '+FLAGS', '\\Deleted')
+                            server_imap.expunge()
+                            del emails[delete_email_option - 1]
+                            print("Email berhasil dihapus.")
+                            if len(emails) == 0:
+                                if not email_sent:
+                                    print("Kotak masuk kosong.")
+                                else: 
+                                    print("Email terkirim kosong.")
+                                return
+                            else:
+                                continue
+                        except Exception as e:
+                            print(f"Gagal menghapus email: {e}")
+                            continue
+                    else: 
+                        print("ID email tidak valid. Silakan coba lagi.")
+                        continue
                 else:
                     print("Pilihan tidak valid. Silakan coba lagi.")
             except ValueError:
