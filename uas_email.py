@@ -19,7 +19,7 @@ Selamat Datang di Program Email!
         auth_option = input("Pilihan anda (1/2): ")
         if auth_option == "1":
             while True:
-                email_address = input("Masukkan alamat email Anda: ")
+                email_address = input("Masukkan alamat email Anda: ").strip()
                 if validasiEmail(email_address):
                     break
                 else:
@@ -71,9 +71,9 @@ def menu(email_address, server_smtp, server_imap):
         if menu_option == "1":
             sendEmail(email_address, server_smtp)
         elif menu_option == "2":
-            print("nanti disini ada fitur terkirim")
+            recvEmail(email_address, server_smtp, server_imap, True)
         elif menu_option == "3":
-            recvEmail(email_address, server_smtp, server_imap)
+            recvEmail(email_address, server_smtp, server_imap, False)
         elif menu_option == "4":
             print(f"Anda telah keluar dari akun {email_address}")
             try:
@@ -187,9 +187,23 @@ def sendEmail(email_address,
 
 
 # fungsi untuk menerima email
-def recvEmail(email_address, server_smtp, server_imap):
+def recvEmail(email_address, server_smtp, server_imap, email_sent=False):
     try:
-        server_imap.select("inbox")
+        if email_sent:
+            print("Membaca email terkirim...")
+
+            if email_address.endswith("@gmail.com"):
+                status, _ = server_imap.select('"[Gmail]/Surat Terkirim"')
+            else:
+                status, _ = server_imap.select("Sent") 
+        else:
+            print("Membaca kotak masuk email...")
+            status, _ = server_imap.select("inbox")
+
+        if status != "OK":
+            print("Gagal memilih folder email.")
+            return
+        
         _, email_ids_raw = server_imap.search(None, "ALL")
         email_ids = email_ids_raw[0].split()
 
@@ -303,12 +317,15 @@ def recvEmail(email_address, server_smtp, server_imap):
                                                 decoded_filename, encoding = decode_header(filename)[0]
                                                 if isinstance(decoded_filename, bytes):
                                                     decoded_filename = decoded_filename.decode(encoding if encoding else 'utf-8', errors='ignore')
-                                                os.makedirs("unduhan", exist_ok=True)
-                                                filepath = os.path.join("unduhan", f"{round(time.time())}_{decoded_filename}")
-                                                with open(filepath, "wb") as f:
-                                                    f.write(part.get_payload(decode=True))
-                                                previous_filenames.append(decoded_filename)
-                                                print(f"\nLampiran: {decoded_filename}, disimpan di: {filepath}")
+                                                if not email_sent:
+                                                    os.makedirs("unduhan", exist_ok=True)
+                                                    filepath = os.path.join("unduhan", f"{round(time.time())}_{decoded_filename}")
+                                                    with open(filepath, "wb") as f:
+                                                        f.write(part.get_payload(decode=True))
+                                                    previous_filenames.append(decoded_filename)
+                                                    print(f"\nLampiran: {decoded_filename}, disimpan di: {filepath}")
+                                                else:
+                                                    print(f"\nLampiran: {decoded_filename}")
                                             except Exception as e:
                                                 print(f"Error menyimpan lampiran: {e}")
                             else:
@@ -320,17 +337,20 @@ def recvEmail(email_address, server_smtp, server_imap):
                                 except Exception as e:
                                     print(f"Error membaca isi email: {e}")
 
-                            reply = input("\nApakah anda ingin membalas email ini? (y/n): ").strip().lower()
-                            if reply == "y":
-                                sendEmail(
-                                    email_address,
-                                    server_smtp,
-                                    recipient_address=email_message.get("From", ""),
-                                    original_subject=decoded_subject,
-                                    original_message_id=email_message.get("Message-ID"),
-                                    previous_body=previous_body,
-                                    previous_filenames=previous_filenames
-                                )
+                            if not email_sent:                                    
+                                reply = input("\nApakah anda ingin membalas email ini? (y/n) (n untuk kembali): ").strip().lower()
+                                if reply == "y":
+                                    sendEmail(
+                                        email_address,
+                                        server_smtp,
+                                        recipient_address=email_message.get("From", ""),
+                                        original_subject=decoded_subject,
+                                        original_message_id=email_message.get("Message-ID"),
+                                        previous_body=previous_body,
+                                        previous_filenames=previous_filenames
+                                    )
+                            else:
+                                input("\nTekan enter untuk kembali")
                 else:
                     print("Pilihan tidak valid. Silakan coba lagi.")
             except ValueError:
