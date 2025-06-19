@@ -15,7 +15,7 @@ from email.header import decode_header
 from email.utils import parsedate_to_datetime
 from email.mime.multipart import MIMEMultipart
 
-# Konfigurasi server beserta port
+# Konfigurasi server beserta port gmail
 smtp_server = "smtp.gmail.com"
 smtp_port = 587
 imap_server = "imap.gmail.com"

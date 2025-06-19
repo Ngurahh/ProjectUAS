@@ -1,11 +1,14 @@
 from email_needs import *
 
-
+""" fungsi untuk validasi email menggunakan regex """
 def validasiEmail(email_address):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email_address))
 
-
+""" Fungsi untuk autentikasi dimana akan dimunculkan menu untuk masuk dan keluar. 
+Jika memilih masuk maka pengguna akan diminta untuk memasukkan alamat email (gmail) juga password (App password) 
+Jika pengguna memilih keluar maka koneksi akan dihentikan
+"""
 def auth():
     while True:
         print('''================================
@@ -48,7 +51,9 @@ Selamat Datang di Program Email!
         else:
             print("Pilihan tidak valid. Silakan coba lagi.")
 
-
+"""
+Fungsi menu dimana akan dimunculkan menu untuk kirim email, kotak masuk dan keluar
+"""
 def menu(email_address, server_smtp, server_imap):    
     while True:
         print(f'''================================
@@ -72,7 +77,9 @@ def menu(email_address, server_smtp, server_imap):
         else:
             print("Pilihan tidak valid. Silakan coba lagi.")
 
-
+""" 
+Fungsi untuk mengirim email dimana nanti pengguna akan diminta untuk memasukkan email penerima, subjek, isi email, dan lampiran (jika ada)
+"""
 def sendEmail(email_address, 
               server_smtp, 
               recipient_address="", 
@@ -160,7 +167,11 @@ def sendEmail(email_address,
         if more != "y":
             return        
 
-
+"""
+Fungsi untuk menerima email, dimana menu ini akan menampilkan 20 email terbaru dari kotak masuk. 
+Pengguna dapat memilih nomor id dari email tersebut untuk membuka email tersebut, saat membuka email
+pengguna dapat memilih untuk membalas pesan, menghapus pesan, atau keluar dari kotak masuk
+"""
 def recvEmail(email_address, server_smtp, server_imap):
     try:
         server_imap.select("inbox")
@@ -312,8 +323,9 @@ def recvEmail(email_address, server_smtp, server_imap):
     except Exception as e:
         print(f"Gagal membaca email: {e}")
 
-
+""" Memanggil fungsi auth untuk memulai program """
 if __name__ == "__main__":
     auth()
 
 # email_password = 'ulbh lgzz fkfp zvtp'
+# akun : egarhahahalucu@gmail.com
